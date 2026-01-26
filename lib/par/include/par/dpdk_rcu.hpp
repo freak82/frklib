@@ -19,10 +19,12 @@ namespace freak::par
 // This functionality provides the ability for the readers to report quiescent
 // state and for the writers to identify when all the readers have
 // entered quiescent state.
+// Note that multiple concurrent writers/updaters are allowed.
 //
 // TODO: Add allocator support
 class dpdk_rcu
 {
+    // TODO
     static constexpr auto cache_line_size = 64uz;
 
     // Quiescent state counter
@@ -32,6 +34,8 @@ class dpdk_rcu
     };
 
     alignas(cache_line_size) std::atomic<uint64_t> current_token_{1};
+    // The acknowledged token is an optimization to skip heavier checks for the
+    // quiescent state for the case of multiple writers/updaters.
     std::atomic<uint64_t> acked_token_{0};
 
     // There is one quiescent state counter for every reader thread.
@@ -89,7 +93,7 @@ public:
     // argument then the function always returns `true`.
     // - `false` if not all reader threads have passed the quiescent state
     // corresponding to the provided token
-    bool check_quiescent_state(qs_token, qs_wait_cmd) const noexcept;
+    bool check_quiescent_state(qs_token, qs_wait_cmd) noexcept;
 };
 
 } // namespace freak::par

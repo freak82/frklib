@@ -3,6 +3,12 @@
 namespace freak::par
 {
 
+// TODO:
+static void cpu_pause()
+{
+    __builtin_ia32_pause();
+}
+
 dpdk_rcu::dpdk_rcu(uint32_t num_threads)
 : qsbr_cnt_(std::make_unique<qsbr_cnt[]>(num_threads))
 , num_threads_(num_threads)
@@ -34,10 +40,35 @@ void dpdk_rcu::reader_quiescent_state(uint32_t thread_idx) noexcept
     }
 }
 
-bool dpdk_rcu::check_quiescent_state(qs_token, qs_wait_cmd) const noexcept
+bool dpdk_rcu::check_quiescent_state(qs_token tok, qs_wait_cmd wait) noexcept
 {
-    // TODO
-    return false;
+    static constexpr uint64_t max_acked_token = ~0ull;
+
+    // This is just an optimization for the case of multiple writers and thus
+    // we don't need to be precise and don't need memory ordering/barriers.
+    if (tok.v_ <= acked_token_.load(std::memory_order_relaxed)) return true;
+
+    uint64_t acked_token = max_acked_token;
+
+    for (const auto& cnt : std::span(qsbr_cnt_.get(), num_threads_)) {
+        for (;;) {
+            // The functionality doesn't check for wrap-around condition
+            // because 2^64 updates are not expected to happen in practice for
+            // any application that I can imagine.
+            if (auto c = cnt.load(std::memory_order_acquire); c >= tok.v_) {
+                // Set the acknowledged token to the smallest of all readers.
+                if (acked_token > c) acked_token = c;
+                break;
+            }
+            if (wait == qs_no_wait) return false;
+            cpu_pause();
+        }
+    }
+
+    if (acked_token != max_acked_token)
+        acked_token_.store(acked_token, std::memory_order_relaxed);
+
+    return true;
 }
 
 } // namespace freak::par
