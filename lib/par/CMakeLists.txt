@@ -2,6 +2,7 @@
 # of some of the library headers. They verify if the library header includes
 # all of the needed headers to be compiled in isolation.
 add_library(par OBJECT
+    src/dpdk_rcu.cpp
     src/vyukov_mpmc_queue.cpp
 )
 

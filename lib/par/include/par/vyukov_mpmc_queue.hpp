@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assert.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include <atomic>
@@ -9,6 +10,7 @@
 namespace freak::par
 {
 
+// TODO: Add allocator support
 template <typename T>
 class vyukov_mpmc_queue
 {
