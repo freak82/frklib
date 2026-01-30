@@ -1,10 +1,11 @@
 #pragma once
 
-#include <assert.h>
 #include <stdint.h>
 
 #include <atomic>
 #include <memory>
+
+#include "par/cpu.hpp"
 
 namespace freak::par
 {
@@ -24,22 +25,19 @@ namespace freak::par
 // TODO: Add allocator support
 class dpdk_rcu
 {
-    // TODO
-    static constexpr auto cache_line_size = 64uz;
-
     // Quiescent state counter
     // Needs to be aligned to avoid the false sharing between the threads
-    struct alignas(cache_line_size) qsbr_cnt : std::atomic<uint64_t>
+    struct alignas(cpu::cache_line_size) qsbr_cnt : std::atomic<uint64_t>
     {
     };
 
-    alignas(cache_line_size) std::atomic<uint64_t> current_token_{1};
+    alignas(cpu::cache_line_size) std::atomic<uint64_t> current_token_{1};
     // The acknowledged token is an optimization to skip heavier checks for the
     // quiescent state for the case of multiple writers/updaters.
     std::atomic<uint64_t> acked_token_{0};
 
     // There is one quiescent state counter for every reader thread.
-    alignas(cache_line_size) std::unique_ptr<qsbr_cnt[]> qsbr_cnt_;
+    alignas(cpu::cache_line_size) std::unique_ptr<qsbr_cnt[]> qsbr_cnt_;
     const uint32_t num_threads_;
 
 public:

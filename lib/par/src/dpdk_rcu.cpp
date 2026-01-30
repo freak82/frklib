@@ -1,13 +1,9 @@
 #include "par/dpdk_rcu.hpp"
 
+#include <assert.h>
+
 namespace freak::par
 {
-
-// TODO:
-static void cpu_pause()
-{
-    __builtin_ia32_pause();
-}
 
 dpdk_rcu::dpdk_rcu(uint32_t num_threads)
 : qsbr_cnt_(std::make_unique<qsbr_cnt[]>(num_threads))
@@ -61,7 +57,7 @@ bool dpdk_rcu::check_quiescent_state(qs_token tok, qs_wait_cmd wait) noexcept
                 break;
             }
             if (wait == qs_no_wait) return false;
-            cpu_pause();
+            cpu::pause();
         }
     }
 

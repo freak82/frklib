@@ -7,6 +7,8 @@
 #include <atomic>
 #include <memory>
 
+#include "par/cpu.hpp"
+
 namespace freak::par
 {
 
@@ -26,14 +28,12 @@ class vyukov_mpmc_queue
         } u_;
     };
 
-    static constexpr size_t cache_line_size = 64;
-
-    alignas(cache_line_size) std::unique_ptr<cell[]> cells_;
+    alignas(cpu::cache_line_size) std::unique_ptr<cell[]> cells_;
     const uint64_t pos_mask_;
 
-    alignas(cache_line_size) std::atomic<uint64_t> push_pos_{0};
+    alignas(cpu::cache_line_size) std::atomic<uint64_t> push_pos_{0};
 
-    alignas(cache_line_size) std::atomic<uint64_t> pop_pos_{0};
+    alignas(cpu::cache_line_size) std::atomic<uint64_t> pop_pos_{0};
 
 public:
     using value_type = T;
