@@ -4,6 +4,8 @@
 add_library(par OBJECT
     src/cfreaks_rcu.cpp
     src/dpdk_rcu.cpp
+    src/read_write.cpp
+    src/synchronized.cpp
     src/vyukov_mpmc_queue.cpp
 )
 

@@ -29,6 +29,7 @@ cfreaks_rcu::rd_token cfreaks_rcu::read_lock(uint32_t thread_idx) noexcept
     // `synchronize` function.
     const auto upd_pos = updater_version_.load(std::memory_order_acquire) & 0x1;
     const auto upd_idx = (upd_pos * num_threads_) + thread_idx;
+    auto& st           = state_[upd_idx];
     // Even though this function is not put in the header i.e. the compiler
     // will treat it as non-opaque i.e. memory barrier, a build with LTO enabled
     // can change this and thus we need to be prepared.
@@ -38,10 +39,10 @@ cfreaks_rcu::rd_token cfreaks_rcu::read_lock(uint32_t thread_idx) noexcept
     // the read side critical section. A separate atomic_thread_fence can't be
     // used here because it won't synchronizes with anything unless we use an
     // artificial separate barrier in the `read_unlock`.
-    // Another option is to just do an acquire load operation after the store
-    // here and throw away its result but that just seems to me as "heavy" as
-    // single exchange operation here.
-    state_[upd_idx].fetch_add(1, std::memory_order_acq_rel);
+    // fetch_add(1, std::memory_order_acq_rel) would do the job but it generates
+    // the heavy `lock` prefix which is avoided by the 3 operations below.
+    st.store(st.load(std::memory_order_relaxed) + 1, std::memory_order_release);
+    // opt::do_not_optimize_away(st.load(std::memory_order_acquire));
     return {.v_ = static_cast<uint8_t>(upd_pos)};
 }
 
@@ -50,11 +51,8 @@ void cfreaks_rcu::read_unlock(uint32_t thread_idx, rd_token rdt) noexcept
     assert(rdt.v_ < 2u);
     assert(thread_idx < num_threads_);
     const auto upd_idx = (rdt.v_ * num_threads_) + thread_idx;
-    [[maybe_unused]] const auto st =
-        state_[upd_idx].fetch_sub(1, std::memory_order_release);
-    // An assert here the `read_lock`/`read_unlock` functions are not paired
-    // correctly by the user of the RCU.
-    assert(st >= 1ul);
+    auto& st           = state_[upd_idx];
+    st.store(st.load(std::memory_order_relaxed) - 1, std::memory_order_release);
 }
 
 bool cfreaks_rcu::synchronize(wait_cmd cmd) noexcept
