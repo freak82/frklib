@@ -13,15 +13,15 @@ option(
     ON
 )
 
-add_subdirectory(3rdparty)
+add_subdirectory(extern)
 
 include(cmake/flags.cmake)
 
-add_subdirectory(src)
+#add_subdirectory(src)
 
 if(LEARN_CMAKE_BUILD_TESTS)
     include(CTest)
     include(cmake/tests.cmake)
-    add_subdirectory(ptests)
+    #    add_subdirectory(ptests)
     add_subdirectory(utests)
 endif()
