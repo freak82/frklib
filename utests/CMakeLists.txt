@@ -3,6 +3,7 @@ add_subdirectory(main)
 
 add_executable(tests
     algo/algorithm.cpp
+    net/endian.cpp
     #net/ip_addr.cpp
     #    net/ip_addr_port.cpp
     $<TARGET_OBJECTS:tests_main>
