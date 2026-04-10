@@ -9,10 +9,12 @@ release:
 	cmake --build ./build/ --verbose --config Release
 
 clean:
-	rm -rf ./build/app
-	rm -rf ./build/bpfs
-	rm -rf ./build/tests
-	$(MAKE) clean -C ./bpfs
+	rm -f ./build/compile_commands.json
+	rm -rf ./build/code-check-reports
+	rm -rf ./build/extern
+	rm -rf ./build/ptests
+	rm -rf ./build/src
+	rm -rf ./build/utests
 
 test:
 	ctest --verbose --test-dir ./build -C RelWithDebInfo
@@ -25,7 +27,7 @@ config_no_test:
 		-DSYCLOPE_BUILD_TESTS=0
 
 check:
-	CodeChecker analyze ./build/compile_commands.json -o ./build/code-check-reports
+	CodeChecker analyze ./build/compile_commands.json -i ./.codechecker.skip -o ./build/code-check-reports
 
 report:
 	CodeChecker parse ./build/code-check-reports -e html -o ./build/code-check-reports/html ; \
