@@ -12,6 +12,11 @@
 namespace freak::par
 {
 
+// Multi-producer multi-consumer bounded queue designed/created initially by
+// Dmitry Vyukov.
+// Original source code:
+// https://web.archive.org/web/20191230132848/
+// http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 // TODO: Add allocator support
 template <typename T>
 class vyukov_mpmc_queue

@@ -1,7 +1,6 @@
 
 add_library(flags_options INTERFACE)
 
-# Pick some better and more performant architecture
 target_compile_options(flags_options
     INTERFACE
         -std=c++2c
@@ -19,7 +18,7 @@ target_compile_options(flags_options
         -Warith-conversion
 )
 
-target_link_options(flags_options
-    INTERFACE
-        -static-libstdc++ -static-libgcc
-)
+#target_link_options(flags_options
+#    INTERFACE
+#        -static-libstdc++ -static-libgcc
+#)
