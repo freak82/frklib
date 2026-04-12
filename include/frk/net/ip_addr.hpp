@@ -1,11 +1,17 @@
 #pragma once
 
+#include "frk/net/endian.hpp"
+
 #include <arpa/inet.h>
 #include <stdint.h>
 #include <string.h>
 
 #include <bit>
+#include <format>
+#include <optional>
 #include <span>
+#include <string_view>
+#include <type_traits>
 
 namespace frk::net
 {
@@ -28,54 +34,54 @@ struct ip4_addr
 
     static constexpr uint8_t cnt_bits  = 32;
     static constexpr uint8_t cnt_bytes = 4;
+    static constexpr uint16_t family   = AF_INET;
+    static constexpr size_t str_len    = INET_ADDRSTRLEN;
 
     unsigned char bytes_[4];
 
-    [[nodiscard]] static constexpr ip4_addr
-    from_network_order(integer_type v) noexcept
+    [[nodiscard]] static constexpr ip4_addr from_be(integer_type v) noexcept
     {
         return std::bit_cast<ip4_addr>(v);
     }
     [[nodiscard]] static constexpr ip4_addr
-    from_network_order(std::span<const unsigned char, 4> v) noexcept
+    from_be(std::span<const unsigned char, 4> v) noexcept
     {
         ip4_addr ret;
         ::memcpy(ret.bytes_, v.data(), v.size());
         return ret;
     }
-    [[nodiscard]] static constexpr ip4_addr
-    from_network_order(in_addr v) noexcept
+    [[nodiscard]] static constexpr ip4_addr from_be(in_addr v) noexcept
     {
         return std::bit_cast<ip4_addr>(v);
     }
-    [[nodiscard]] static constexpr ip4_addr
-    from_native_order(integer_type v) noexcept
+    [[nodiscard]] static constexpr ip4_addr from_native(integer_type v) noexcept
     {
-        return from_network_order(ben::native_to_big(v));
+        return ip4_addr::from_be(frk::net::to_be(v));
     }
 
     [[nodiscard]] static constexpr std::optional<ip4_addr>
     from_string(std::string_view str) noexcept
     {
         // The C API expects NULL terminated string and thus we need the copy.
-        char tmp[INET_ADDRSTRLEN];
+        char tmp[ip4_addr::str_len];
         if (str.size() >= sizeof(tmp)) return std::nullopt;
         ::memcpy(tmp, str.data(), str.size());
         tmp[str.size()] = '\0';
 
         ip4_addr ret;
         static_assert(sizeof(ret.bytes_) == sizeof(in_addr));
-        if (!::inet_pton(AF_INET, tmp, ret.bytes_)) return std::nullopt;
+        if (!::inet_pton(ip4_addr::family, tmp, ret.bytes_))
+            return std::nullopt;
         return ret;
     }
 
-    [[nodiscard]] constexpr integer_type to_network_integer() const noexcept
+    [[nodiscard]] constexpr integer_type to_be_integer() const noexcept
     {
         return std::bit_cast<integer_type>(bytes_);
     }
     [[nodiscard]] constexpr integer_type to_native_integer() const noexcept
     {
-        return ben::big_to_native(to_network_integer());
+        return frk::net::from_be(to_be_integer());
     }
     [[nodiscard]] constexpr in_addr to_in_addr() const noexcept
     {
@@ -85,76 +91,75 @@ struct ip4_addr
     [[nodiscard]] constexpr ip4_addr mask(prefix_len p) const noexcept
     {
         const auto mask = (integer_type(1) << (cnt_bits - p.nbits)) - 1;
-        return from_native_order(to_native_integer() & ~mask);
+        return from_native(to_native_integer() & ~mask);
     }
 
     // As of GCC 12.1 the compiler sill generates much worse code if we
     // default these operations.
     constexpr std::strong_ordering operator<=>(ip4_addr rhs) const noexcept
     {
-        return (to_network_integer() <=> rhs.to_network_integer());
+        return (to_be_integer() <=> rhs.to_be_integer());
     }
     constexpr bool operator==(ip4_addr rhs) const noexcept
     {
-        return (to_network_integer() == rhs.to_network_integer());
+        return (to_be_integer() == rhs.to_be_integer());
     }
 };
 
 struct ip6_addr
 {
-    // Silence pedantic warning for ISO C++ not supporting __int128
-    __extension__ using integer_type = unsigned __int128;
+    using integer_type = frk::net::uint128_t;
 
     static constexpr uint8_t cnt_bits  = 128;
     static constexpr uint8_t cnt_bytes = 16;
+    static constexpr uint16_t family   = AF_INET6;
+    static constexpr size_t str_len    = INET6_ADDRSTRLEN;
 
     unsigned char bytes_[16];
 
-    [[nodiscard]] static constexpr ip6_addr
-    from_network_order(integer_type v) noexcept
+    [[nodiscard]] static constexpr ip6_addr from_be(integer_type v) noexcept
     {
         return std::bit_cast<ip6_addr>(v);
     }
     [[nodiscard]] static constexpr ip6_addr
-    from_network_order(std::span<const unsigned char, 16> v) noexcept
+    from_be(std::span<const unsigned char, 16> v) noexcept
     {
         ip6_addr ret;
         ::memcpy(ret.bytes_, v.data(), v.size());
         return ret;
     }
-    [[nodiscard]] static constexpr ip6_addr
-    from_network_order(in6_addr v) noexcept
+    [[nodiscard]] static constexpr ip6_addr from_be(in6_addr v) noexcept
     {
         return std::bit_cast<ip6_addr>(v);
     }
-    [[nodiscard]] static constexpr ip6_addr
-    from_native_order(integer_type v) noexcept
+    [[nodiscard]] static constexpr ip6_addr from_native(integer_type v) noexcept
     {
-        return from_network_order(ben::native_to_big(v));
+        return ip6_addr::from_be(frk::net::to_be(v));
     }
 
     [[nodiscard]] static constexpr std::optional<ip6_addr>
     from_string(std::string_view str) noexcept
     {
         // The C API expects NULL terminated string and thus we need the copy.
-        char tmp[INET6_ADDRSTRLEN];
+        char tmp[ip6_addr::str_len];
         if (str.size() >= sizeof(tmp)) return std::nullopt;
         ::memcpy(tmp, str.data(), str.size());
         tmp[str.size()] = '\0';
 
         ip6_addr ret;
         static_assert(sizeof(ret.bytes_) == sizeof(in6_addr));
-        if (!::inet_pton(AF_INET6, tmp, ret.bytes_)) return std::nullopt;
+        if (!::inet_pton(ip6_addr::family, tmp, ret.bytes_))
+            return std::nullopt;
         return ret;
     }
 
-    [[nodiscard]] constexpr integer_type to_network_integer() const noexcept
+    [[nodiscard]] constexpr integer_type to_be_integer() const noexcept
     {
         return std::bit_cast<integer_type>(bytes_);
     }
     [[nodiscard]] constexpr integer_type to_native_integer() const noexcept
     {
-        return ben::big_to_native(to_network_integer());
+        return frk::net::from_be(to_be_integer());
     }
     [[nodiscard]] constexpr in6_addr to_in_addr() const noexcept
     {
@@ -164,7 +169,7 @@ struct ip6_addr
     [[nodiscard]] constexpr ip6_addr mask(prefix_len p) const noexcept
     {
         const auto mask = (integer_type(1) << (cnt_bits - p.nbits)) - 1;
-        return from_native_order(to_native_integer() & ~mask);
+        return from_native(to_native_integer() & ~mask);
     }
 
     // As of GCC 12.1 the compiler sill generates much worse code if we
@@ -190,42 +195,29 @@ struct ip6_addr
     //     ret
     constexpr std::strong_ordering operator<=>(ip6_addr rhs) const noexcept
     {
-        return (to_network_integer() <=> rhs.to_network_integer());
+        return (to_be_integer() <=> rhs.to_be_integer());
     }
     constexpr bool operator==(ip6_addr rhs) const noexcept
     {
-        return (to_network_integer() == rhs.to_network_integer());
+        return (to_be_integer() == rhs.to_be_integer());
     }
 };
 
 } // namespace frk::net
 ////////////////////////////////////////////////////////////////////////////////
-// The formatters are done in this way so that the parsing functionality of the
+// The formatter is done in this way so that the parsing functionality of the
 // base formatter can be reused and the output to be able to be aligned, etc.
-template <>
-struct fmt::formatter<put::ip4_addr> : fmt::formatter<std::string_view>
+template <typename Addr>
+    requires(std::is_same_v<Addr, frk::net::ip4_addr> ||
+             std::is_same_v<Addr, frk::net::ip6_addr>)
+struct std::formatter<Addr> : std::formatter<std::string_view>
 {
-    auto format(const auto& arg, auto& ctx) const noexcept
+    auto format(const Addr& arg, auto& ctx) const noexcept
     {
-        using base_type = fmt::formatter<std::string_view>;
-        char buf[INET_ADDRSTRLEN];
-        auto [out, _] =
-            fmt::format_to_n(buf, sizeof(buf), "{}.{}.{}.{}", arg.bytes_[0],
-                             arg.bytes_[1], arg.bytes_[2], arg.bytes_[3]);
-        return base_type::format(
-            std::string_view(buf, static_cast<size_t>(out - buf)), ctx);
-    }
-};
-
-template <>
-struct fmt::formatter<put::ip6_addr> : fmt::formatter<std::string_view>
-{
-    auto format(const auto& arg, auto& ctx) const noexcept
-    {
-        using base_type = fmt::formatter<std::string_view>;
-        char buff[INET6_ADDRSTRLEN];
+        using base_type = std::formatter<std::string_view>;
+        char buff[Addr::str_len];
         const auto addr = arg.to_in_addr();
-        const char* str = ::inet_ntop(AF_INET6, &addr, buff, sizeof(buff));
+        const char* str = ::inet_ntop(Addr::family, &addr, buff, sizeof(buff));
         return str ? base_type::format(std::string_view(str), ctx) : ctx.out();
     }
 };
